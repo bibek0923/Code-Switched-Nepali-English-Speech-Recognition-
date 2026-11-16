@@ -26,18 +26,28 @@ language ID pass decides which words were actually English and romanises those b
 
 ## Dataset
 
-14.81 hours in total, from three places:
+The merged corpus is published on Kaggle:
+**[Nepali ASR dataset](https://www.kaggle.com/datasets/bibekpaneru1/nepali-asr-dataset)** —
+12,832 clips, about 15.7 hours, 3.2 GB, Devanagari transcripts in UTF-8.
 
-| Source | Clips | Duration | Notes |
-|---|---|---|---|
-| Nepali Speech-to-Text (Kaggle) | 330 | 2.31 h | long clips, avg ~25 s, Federal Parliament speeches |
-| OpenSLR High-Quality Nepali TTS | 8,000 | 6.67 h | avg ~3 s, 19 female speakers, read news-style sentences |
-| Our own recordings | 4,670 | ~5.84 h | avg ~4.5 s, short code-switched phrases, academic and casual |
+Four corpora flattened into a single `audio_path, transcript` manifest:
 
-We recorded the third set ourselves because there was nothing public with Nepali-English
-code-switching in it. That set is the reason the project works at all, and also the reason the
-numbers below are not comparable to published Nepali WER figures, which are measured on clean
-monolingual read speech.
+| Source | Clips | Hours | Format | What it is |
+|---|---|---|---|---|
+| `asr_nepali` (OpenSLR 54 subset) | 9,935 | 9.75 | FLAC, 16 kHz mono | crowd-sourced read sentences, 526 speakers |
+| `ne_np_female` (OpenSLR 43) | 2,064 | 2.80 | WAV, 48 kHz mono | single-speaker studio read speech |
+| `nepali_speech_to_text_dataset` | 333 | 2.70 | WAV, 44.1 kHz stereo | Federal Parliament proceedings in 30 s chunks |
+| `manual_dataset` | 500 | 0.46 | WAV, 16 kHz mono | our own recordings: colloquial, code-mixed Nepali-English |
+
+We recorded `manual_dataset` ourselves because nothing public had Nepali-English code-switching
+in it. It is worth being clear about the proportions: 0.46 hours of code-mixed speech against
+roughly 12.5 hours of read speech. It works as an adaptation and evaluation set, not as the bulk
+of the training signal, and that imbalance is a large part of why the error rates below sit where
+they do. It is also why these numbers are not comparable to published Nepali WER figures, which
+are measured on clean monolingual read speech.
+
+If you read the report alongside this: section 3.5.1 there describes a three-source corpus of
+14.81 hours with 4,670 manual clips. The manifest that was actually trained on is the one above.
 
 Preprocessing: dropped rows with a missing audio file or empty transcript, stripped punctuation
 and danda, normalised whitespace, resampled everything to 16 kHz mono, and filtered out
@@ -118,6 +128,11 @@ It was written for Google Colab and expects the dataset on Drive:
 └── <audio files referenced by filename>
 ```
 
+Download the Kaggle dataset linked above into that folder. The manifest there is
+`merged_with_manual.csv` with columns `audio_path, transcript`; the notebook reads
+`merged_with_manual_remove_dirty.csv`, which is the same thing after the blank and duplicated
+rows were pulled out. Rename the columns or the file to match, whichever you prefer.
+
 Everything you would want to change is in the `config` class in the second cell, so you should
 not have to touch anything further down. Then run top to bottom.
 
@@ -129,8 +144,14 @@ is slow regardless, because it generates for the entire eval split at every epoc
 
 - The language ID and transliteration stage is described in the report but is not in this
   notebook; the notebook covers the ASR model only.
-- No speaker-held-out split. Our recordings come from four speakers, so some of the gain on the
-  code-switched portion is probably speaker adaptation rather than better code-switching.
+- The 90/10 split is random, not speaker-disjoint or transcript-disjoint. 454 transcripts repeat
+  across distinct audio files in the merged corpus, so some eval rows have a near twin in
+  training and the WER here should be read as optimistic. Only `asr_nepali/utt_spk_text.tsv`
+  carries speaker ids, and it covers one of the four sources, so a clean speaker-held-out split
+  is not currently possible for the whole set.
+- 320 of the 338 parliament chunks are exactly 30.04 s with a single transcript spanning the
+  whole window, which is long for Whisper's segment handling and almost certainly costs accuracy
+  on that source.
 - CER and WER are computed on the normalised transcripts (punctuation stripped), so they are not
   directly comparable to papers that keep punctuation.
 - The title says real-time. The system processes uploaded files in short chunks with low latency;
