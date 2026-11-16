@@ -1,0 +1,27 @@
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# training artefacts
+whisper-lora-final/
+results/
+logs/
+checkpoint-*/
+*.zip
+*.pt
+*.bin
+*.safetensors
+
+# generated during runs
+training_log.csv
+eval_predictions.csv
+
+# local data
+merged_dataset/
+*.wav
+*.mp3
+*.mp4
+
+.DS_Store
+Thumbs.db
+.vscode/
